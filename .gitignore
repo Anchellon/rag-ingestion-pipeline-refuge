@@ -214,3 +214,39 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ============================================
+# Project-Specific Ignores
+# ============================================
+
+# ChromaDB vector database (generated, do not commit)
+chroma_db/
+test_chroma/
+*.chroma
+*.sqlite3
+chroma.sqlite3
+
+
+# Test output files
+test_output/
+*.test.pdf
+
+# Pytest coverage reports
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.orig

@@ -43,42 +43,48 @@ class LLMMetadataExtractor:
     
     def _create_prompt(self):
         """Create extraction prompt"""
-        template = """You are a metadata extraction system. You MUST respond with ONLY valid JSON.
+        template = """You are a metadata extraction system. Extract information from the text and return ONLY a JSON object.
 
 Document text:
 {text}
 
-{format_instructions}
+EXTRACT THE FOLLOWING (use null for missing values):
+- service_type: Category (food, housing, healthcare, legal, education, employment, general, other)
+- city: Primary city mentioned
+- neighborhood: Neighborhood if mentioned
+- mentioned_services: Array of service names mentioned
+- mentioned_organizations: Array of organization names mentioned
+- contact: Object with phone, email, website (if found)
+- location: Object with address, city, state, zip (if found)
+- service_details: Object with hours, eligibility, cost, languages, accessibility (if found)
 
-EXTRACTION RULES:
-1. Extract ALL information present in the text
-2. Contact information:
-   - phone numbers → contact.phone
-   - emails → contact.email  
-   - websites → contact.website
-3. Location details:
-   - street address → location.address
-   - city → location.city
-   - state → location.state
-   - zip code → location.zip
-   - neighborhood → location.neighborhood
-4. Service type must be one of: food, housing, healthcare, legal, education, employment, general, other
-5. Service names → mentioned_services list
-6. Organization names → mentioned_organizations list
+EXAMPLE OUTPUT:
+{{
+  "service_type": "food",
+  "city": "San Francisco",
+  "neighborhood": "Mission District",
+  "mentioned_services": ["Soup Kitchen", "Food Bank"],
+  "mentioned_organizations": ["Fraternite Notre Dame"],
+  "contact": {{"phone": "(415) 555-1234", "email": null, "website": "https://example.com"}},
+  "location": {{"address": "123 Main St", "city": "San Francisco", "state": "CA", "zip": "94103"}},
+  "service_details": {{"hours": {{"monday": "9am-5pm"}}, "eligibility": "All welcome", "cost": "Free"}},
+  "related_service_id": null,
+  "related_resource_id": null,
+  "mentioned_locations": null,
+  "topic": null,
+  "content_category": null,
+  "publication_date": null,
+  "publisher": null
+}}
 
-CRITICAL OUTPUT REQUIREMENTS:
-- Return ONLY the JSON object
-- NO explanations, NO code, NO markdown
-- NO ```json``` code blocks
+CRITICAL:
+- Return ONLY the JSON object with actual extracted data
+- DO NOT return a schema or template
+- Use null for fields you cannot extract
 - Start with {{ and end with }}
-- Use null (not "null") for missing values
-- All strings must be properly quoted
+- NO markdown, NO explanations"""
 
-Your response must be valid JSON that can be parsed directly."""
-
-        return ChatPromptTemplate.from_template(template).partial(
-            format_instructions=self.parser.get_format_instructions()
-        )
+        return ChatPromptTemplate.from_template(template)
     
     def _clean_response(self, response: str) -> str:
         """
