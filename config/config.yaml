@@ -1,0 +1,20 @@
+chunking:
+  chunk_size: 512
+  overlap: 50
+
+metadata:
+  use_llm: true
+  provider: "ollama"
+  llm_model: "llama3.2"
+  base_url: "http://172.26.64.1:11434" # ← Changed
+
+embeddings:
+  provider: "ollama"
+  model: "nomic-embed-text"
+  base_url: "http://172.26.64.1:11434" # ← Changed
+
+vectorstore:
+  provider: "chroma"
+  params:
+    persist_directory: "./chroma_db"
+    collection_name: "pdf-documents"
