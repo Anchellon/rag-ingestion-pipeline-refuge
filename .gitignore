@@ -1,3 +1,6 @@
+# Environment variables (contains secrets/local config)
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
