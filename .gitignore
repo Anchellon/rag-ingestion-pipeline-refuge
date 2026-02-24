@@ -253,3 +253,4 @@ htmlcov/
 *.tmp
 *.bak
 *.orig
+tests/fixtures/service_snapshots.csv
