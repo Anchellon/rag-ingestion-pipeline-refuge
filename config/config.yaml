@@ -21,3 +21,8 @@ vectorstore:
   params:
     persist_directory: "./chroma_db"
     collection_name: "pdf-documents"
+
+postgres:
+  table_name: "service_snapshots"
+  sql_file: "sql/service_snapshot.sql"
+  batch_size: 100
