@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Dict
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from src.utils.metadata_serializer import prepare_chunk_metadata
 
 from ..loaders.pdf_loader import PDFLoader

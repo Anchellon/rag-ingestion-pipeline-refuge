@@ -1,11 +1,12 @@
 
+import chromadb
 from langchain_chroma import Chroma
-from langchain.schema import Document
+from langchain_core.documents import Document
 from typing import List, Optional, Dict
 
 class VectorStore:
     """Handle ChromaDB vector storage operations"""
-    
+
     def __init__(
         self,
         embeddings,
@@ -14,7 +15,7 @@ class VectorStore:
     ):
         """
         Initialize ChromaDB vector store
-        
+
         Args:
             embeddings: Embedding function (from Embedder)
             collection_name: Name of ChromaDB collection
@@ -24,13 +25,14 @@ class VectorStore:
         self.collection_name = collection_name
         self.persist_directory = persist_directory
         self.store = self._init_store()
-    
+
     def _init_store(self):
-        """Initialize ChromaDB"""
+        """Initialize ChromaDB with a persistent client (chromadb 1.x API)"""
+        client = chromadb.PersistentClient(path=self.persist_directory)
         return Chroma(
+            client=client,
             collection_name=self.collection_name,
             embedding_function=self.embeddings,
-            persist_directory=self.persist_directory
         )
     
     def add_documents(self, documents: List[Document]) -> List[str]:

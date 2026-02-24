@@ -1,6 +1,6 @@
 from langchain_ollama import ChatOllama
-from langchain.prompts import ChatPromptTemplate
-from langchain.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
 from .schema import ExtractedMetadata
 import json
 import re
@@ -36,7 +36,8 @@ class LLMMetadataExtractor:
                 model=self.model,
                 base_url=self.base_url,
                 temperature=0,
-                format="json"
+                format="json",
+                timeout=60  # Add 60 second timeout
             )
         else:
             raise ValueError(f"Provider '{self.provider}' not supported yet")
