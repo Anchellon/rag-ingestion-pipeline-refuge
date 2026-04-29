@@ -192,26 +192,16 @@ service_categories AS (
     SELECT
         cs.service_id,
         c.id          AS category_id,
-        c.name        AS category_name,
-        parent_c.name AS parent_category_name
+        c.name        AS category_name
     FROM public.categories_services cs
     JOIN public.categories c ON c.id = cs.category_id
         AND c.id BETWEEN 0 AND 399
         AND c.id != 202
         AND c.id NOT BETWEEN 356 AND 362
-    LEFT JOIN public.category_relationships cr ON cr.child_id = c.id
-    LEFT JOIN public.categories parent_c ON parent_c.id = cr.parent_id
-        AND parent_c.id BETWEEN 0 AND 399
-        AND parent_c.id != 202
-        AND parent_c.id NOT BETWEEN 356 AND 362
 ),
 
 -- -------------------------------------------------------
--- CTE 4b: White-label category CTEs
--- SFSG:       1000001–1000012
--- UCSF top:   2000001–2000006
--- UCSF sub:   2100001–2100016
--- OUR415:     356–362
+-- CTE 4b: SFSG white-label categories (1000001–1000012)
 -- -------------------------------------------------------
 sfsg_categories AS (
     SELECT
@@ -221,36 +211,6 @@ sfsg_categories AS (
     FROM public.categories_services cs
     JOIN public.categories c ON c.id = cs.category_id
         AND c.id BETWEEN 1000001 AND 1000012
-),
-
-ucsf_top_categories AS (
-    SELECT
-        cs.service_id,
-        c.id   AS category_id,
-        c.name AS category_name
-    FROM public.categories_services cs
-    JOIN public.categories c ON c.id = cs.category_id
-        AND c.id BETWEEN 2000001 AND 2000006
-),
-
-ucsf_sub_categories AS (
-    SELECT
-        cs.service_id,
-        c.id   AS category_id,
-        c.name AS category_name
-    FROM public.categories_services cs
-    JOIN public.categories c ON c.id = cs.category_id
-        AND c.id BETWEEN 2100001 AND 2100016
-),
-
-our415_categories AS (
-    SELECT
-        cs.service_id,
-        c.id   AS category_id,
-        c.name AS category_name
-    FROM public.categories_services cs
-    JOIN public.categories c ON c.id = cs.category_id
-        AND c.id BETWEEN 356 AND 362
 ),
 
 -- -------------------------------------------------------
@@ -417,10 +377,8 @@ eligibility_meta AS (
 category_meta AS (
     SELECT
         service_id,
-        array_agg(DISTINCT category_id)         AS category_ids,
-        array_agg(DISTINCT category_name)       AS category_names,
-        array_agg(DISTINCT parent_category_name)
-            FILTER (WHERE parent_category_name IS NOT NULL) AS parent_category_names
+        array_agg(DISTINCT category_id)   AS category_ids,
+        array_agg(DISTINCT category_name) AS category_names
     FROM service_categories
     GROUP BY service_id
 ),
@@ -431,33 +389,6 @@ sfsg_meta AS (
         array_agg(DISTINCT category_id)   AS sfsg_category_ids,
         array_agg(DISTINCT category_name) AS sfsg_category_names
     FROM sfsg_categories
-    GROUP BY service_id
-),
-
-ucsf_top_meta AS (
-    SELECT
-        service_id,
-        array_agg(DISTINCT category_id)   AS ucsf_top_category_ids,
-        array_agg(DISTINCT category_name) AS ucsf_top_category_names
-    FROM ucsf_top_categories
-    GROUP BY service_id
-),
-
-ucsf_sub_meta AS (
-    SELECT
-        service_id,
-        array_agg(DISTINCT category_id)   AS ucsf_sub_category_ids,
-        array_agg(DISTINCT category_name) AS ucsf_sub_category_names
-    FROM ucsf_sub_categories
-    GROUP BY service_id
-),
-
-our415_meta AS (
-    SELECT
-        service_id,
-        array_agg(DISTINCT category_id)   AS our415_category_ids,
-        array_agg(DISTINCT category_name) AS our415_category_names
-    FROM our415_categories
     GROUP BY service_id
 )
 
@@ -472,7 +403,6 @@ SELECT
     -- =====================
     s.id                                AS service_id,
     r.id                                AS resource_id,
-    s.program_id,
     s.verified_at,
     s.updated_at,
 
@@ -486,24 +416,14 @@ SELECT
     -- Schedule metadata — jsonb array of {day, open_mins, close_mins} for "open now" filtering
     COALESCE(sched_s.schedule, sched_r.schedule) AS schedule,
 
-    -- Category metadata (scoped 0-355 excluding 202, OUR415 excluded from prose)
+    -- Category metadata
     cm.category_ids,
     cm.category_names,
-    cm.parent_category_names,
-
-    -- White-label category metadata
     sfsg.sfsg_category_ids,
     sfsg.sfsg_category_names,
-    ucsf_top.ucsf_top_category_ids,
-    ucsf_top.ucsf_top_category_names,
-    ucsf_sub.ucsf_sub_category_ids,
-    ucsf_sub.ucsf_sub_category_names,
-    our415.our415_category_ids,
-    our415.our415_category_names,
 
     -- Eligibility metadata bucketed by dimension
     em.eligibility_age,
-    em.eligibility_education,
     em.eligibility_employment,
     em.eligibility_ethnicity,
     em.eligibility_family_status,
@@ -562,13 +482,9 @@ SELECT
                 CASE WHEN p.description IS NOT NULL THEN '. ' || p.description ELSE '' END || '.'
             ELSE NULL END,
 
-        -- Categories (service-level, scoped 0-355 excluding 202)
-        CASE WHEN cm.parent_category_names IS NOT NULL AND array_length(cm.parent_category_names, 1) > 0
-            THEN 'Categories: ' || array_to_string(cm.parent_category_names, ', ') || '.'
-            ELSE NULL END,
-
+        -- Categories
         CASE WHEN cm.category_names IS NOT NULL AND array_length(cm.category_names, 1) > 0
-            THEN 'Sub-categories: ' || array_to_string(cm.category_names, ', ') || '.'
+            THEN 'Categories: ' || array_to_string(cm.category_names, ', ') || '.'
             ELSE NULL END,
 
         -- Eligibility (free text field on service)
@@ -707,18 +623,9 @@ LEFT JOIN service_documents sd
 LEFT JOIN category_meta cm
     ON cm.service_id = s.id
 
--- White-label category metadata
+-- SFSG category metadata
 LEFT JOIN sfsg_meta sfsg
     ON sfsg.service_id = s.id
-
-LEFT JOIN ucsf_top_meta ucsf_top
-    ON ucsf_top.service_id = s.id
-
-LEFT JOIN ucsf_sub_meta ucsf_sub
-    ON ucsf_sub.service_id = s.id
-
-LEFT JOIN our415_meta our415
-    ON our415.service_id = s.id
 
 -- Eligibility metadata
 LEFT JOIN eligibility_meta em

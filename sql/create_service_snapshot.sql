@@ -19,7 +19,6 @@ CREATE TABLE public.service_snapshots (
     -- =====================
     service_id                  integer NOT NULL,
     resource_id                 integer NOT NULL,
-    program_id                  integer,
     address_id                  integer,
 
     -- =====================
@@ -47,29 +46,17 @@ CREATE TABLE public.service_snapshots (
     schedule                    jsonb,
 
     -- =====================
-    -- Core Categories (0-355, excluding 202 MOHCD, excluding 356-362 OUR415)
+    -- Core Categories
     -- =====================
     category_ids                integer[],
     category_names              text[],
-    parent_category_names       text[],
-
-    -- =====================
-    -- White-label Category Metadata
-    -- =====================
     sfsg_category_ids           integer[],
     sfsg_category_names         text[],
-    ucsf_top_category_ids       integer[],
-    ucsf_top_category_names     text[],
-    ucsf_sub_category_ids       integer[],
-    ucsf_sub_category_names     text[],
-    our415_category_ids         integer[],
-    our415_category_names       text[],
 
     -- =====================
     -- Eligibility by Dimension
     -- =====================
     eligibility_age             text[],
-    eligibility_education       text[],
     eligibility_employment      text[],
     eligibility_ethnicity       text[],
     eligibility_family_status   text[],
@@ -115,10 +102,6 @@ CREATE INDEX service_snapshots_eligibility_all_idx
 CREATE INDEX service_snapshots_eligibility_age_idx
     ON public.service_snapshots
     USING gin (eligibility_age);
-
-CREATE INDEX service_snapshots_eligibility_education_idx
-    ON public.service_snapshots
-    USING gin (eligibility_education);
 
 CREATE INDEX service_snapshots_eligibility_employment_idx
     ON public.service_snapshots
