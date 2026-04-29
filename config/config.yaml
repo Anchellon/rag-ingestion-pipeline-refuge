@@ -1,26 +1,10 @@
 # Application Configuration
 # Note: OLLAMA_BASE_URL must be set via .env file (see .env.example)
 
-chunking:
-  chunk_size: 512
-  overlap: 50
-
-metadata:
-  use_llm: true
-  provider: "ollama"
-  llm_model: "llama3.2"
-  base_url: "http://localhost:11434"  # Overridden by OLLAMA_BASE_URL env var
-
 embeddings:
-  provider: "ollama"
+  provider: "ollama"       # Swap to "bedrock" or "openai" without code changes
   model: "nomic-embed-text"
   base_url: "http://localhost:11434"  # Overridden by OLLAMA_BASE_URL env var
-
-vectorstore:
-  provider: "chroma"
-  params:
-    persist_directory: "./chroma_db"
-    collection_name: "pdf-documents"
 
 postgres:
   table_name: "service_snapshots"
