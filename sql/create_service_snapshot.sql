@@ -1,7 +1,7 @@
 -- ============================================================
 -- service_snapshots Table DDL
 -- Stores denormalized service chunks with embeddings
--- Embedding model: nomic-embed-text (768 dimensions)
+-- Embedding model: Amazon Bedrock Titan Embeddings V2 (1024 dimensions)
 -- ============================================================
 
 -- Enable pgvector extension if not already enabled
@@ -72,14 +72,14 @@ CREATE TABLE public.service_snapshots (
     -- Prose + Embedding
     -- =====================
     embedding_text              text,
-    embedding                   vector(768)
+    embedding                   vector(1024)
 );
 
 -- =====================
 -- Indexes
 -- =====================
 
--- Vector similarity search (cosine distance — best for nomic-embed-text)
+-- Vector similarity search (cosine distance — best for Titan V2)
 CREATE INDEX service_snapshots_embedding_idx
     ON public.service_snapshots
     USING hnsw (embedding vector_cosine_ops);
