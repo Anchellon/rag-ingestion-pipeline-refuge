@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import random
@@ -16,48 +17,61 @@ class Embedder:
         self.provider = provider
         self.model = model
         self.base_url = base_url
-        self.embeddings = self._init_embeddings()
+        self._bedrock_client = None
 
-    def _init_embeddings(self):
-        if self.provider == "bedrock":
-            from langchain_aws import BedrockEmbeddings
-            return BedrockEmbeddings(
-                model_id=self.model,
+        if provider != "bedrock":
+            self._lc_embeddings = self._init_lc_embeddings()
+
+    def _init_lc_embeddings(self):
+        if self.provider == "ollama":
+            from langchain_ollama import OllamaEmbeddings
+            return OllamaEmbeddings(model=self.model, base_url=self.base_url)
+        raise ValueError(f"Unsupported embedding provider: '{self.provider}'")
+
+    def _get_bedrock_client(self):
+        if self._bedrock_client is None:
+            import boto3
+            self._bedrock_client = boto3.client(
+                'bedrock-runtime',
                 region_name=os.getenv('AWS_REGION', 'us-east-1'),
             )
-        elif self.provider == "ollama":
-            from langchain_ollama import OllamaEmbeddings
-            return OllamaEmbeddings(
-                model=self.model,
-                base_url=self.base_url,
-            )
-        else:
-            raise ValueError(f"Unsupported embedding provider: '{self.provider}'")
+        return self._bedrock_client
+
+    def _embed_one_bedrock(self, text: str) -> List[float]:
+        # We call boto3 directly instead of using langchain_aws.BedrockEmbeddings
+        # because langchain_aws has its own internal retry loop (4 attempts with
+        # short delays). By the time it raises ThrottlingException to our code it
+        # has already burned 4 retries, and our outer backoff then triggers another
+        # 4 internal retries on the next call — two uncoordinated retry loops.
+        # Using boto3 directly gives us a single, predictable retry loop.
+        client = self._get_bedrock_client()
+        for attempt in range(8):
+            try:
+                response = client.invoke_model(
+                    modelId=self.model,
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps({"inputText": text}),
+                )
+                return json.loads(response['body'].read())['embedding']
+            except client.exceptions.ThrottlingException:
+                wait = min(2 ** attempt + random.uniform(0, 1), 60)
+                print(f"  Bedrock throttled — retrying in {wait:.1f}s (attempt {attempt + 1})")
+                time.sleep(wait)
+            except Exception:
+                raise
+        raise RuntimeError("Bedrock throttling: exceeded max retries")
 
     def embed_text(self, text: str) -> List[float]:
-        return self.embeddings.embed_query(text)
+        if self.provider == "bedrock":
+            return self._embed_one_bedrock(text)
+        return self._lc_embeddings.embed_query(text)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        if self.provider != "bedrock":
-            return self.embeddings.embed_documents(texts)
-
-        # Bedrock throttles hard under bulk load — embed one at a time with
-        # exponential backoff so we stay within the on-demand rate limit.
-        results = []
-        for text in texts:
-            attempts = 0
-            while True:
-                try:
-                    results.append(self.embeddings.embed_query(text))
-                    # Small base delay to avoid bursting
-                    time.sleep(0.05)
-                    break
-                except Exception as e:
-                    if "ThrottlingException" in str(e) or "Too many requests" in str(e):
-                        attempts += 1
-                        wait = min(2 ** attempts + random.uniform(0, 1), 60)
-                        print(f"  Bedrock throttled — retrying in {wait:.1f}s (attempt {attempts})")
-                        time.sleep(wait)
-                    else:
-                        raise
-        return results
+        if self.provider == "bedrock":
+            results = []
+            for text in texts:
+                results.append(self._embed_one_bedrock(text))
+                time.sleep(0.1)  # 10 req/s steady state — stays under Bedrock quota
+            return results
+        return self._lc_embeddings.embed_documents(texts)
