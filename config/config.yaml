@@ -2,9 +2,13 @@
 # Note: OLLAMA_BASE_URL must be set via .env file (see .env.example)
 
 embeddings:
-  provider: "ollama"       # Swap to "bedrock" or "openai" without code changes
-  model: "nomic-embed-text"
-  base_url: "http://localhost:11434"  # Overridden by OLLAMA_BASE_URL env var
+  provider: "bedrock"
+  model: "amazon.titan-embed-text-v2:0"
+  base_url: ""  # unused for bedrock; set to Ollama URL for local dev
+  # Must match the vector(N) type in the CREATE TABLE DDL.
+  # Update this AND re-run the DDL migration whenever you swap embedding models.
+  # nomic-embed-text → 768, Titan V2 → 1024, text-embedding-3-small → 1536
+  embedding_dimension: 1024
 
 postgres:
   table_name: "service_snapshots"
