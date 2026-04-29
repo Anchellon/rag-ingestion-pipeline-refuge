@@ -11,12 +11,24 @@ class PostgresLoader:
 
     def __init__(self, sql_file: str):
         self.sql_file = sql_file
-        self.connection_string = os.getenv('DATABASE_URL')
-        if not self.connection_string:
+        self.connection_string = self._build_connection_string()
+
+    @staticmethod
+    def _build_connection_string() -> str:
+        # Accept either a full URL or individual components (as injected by ECS secrets)
+        url = os.getenv('DATABASE_URL')
+        if url:
+            return url
+        host = os.getenv('DB_HOST')
+        port = os.getenv('DB_PORT', '5432')
+        name = os.getenv('DB_NAME', 'shelter')
+        user = os.getenv('DB_USER')
+        password = os.getenv('DB_PASSWORD')
+        if not all([host, user, password]):
             raise ValueError(
-                "DATABASE_URL environment variable is required.\n"
-                "Add it to your .env file: DATABASE_URL=postgresql://user:password@host:port/dbname"
+                "Set DATABASE_URL or all of DB_HOST, DB_USER, DB_PASSWORD."
             )
+        return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
     def load(self, last_run_at: str = "never") -> List[Dict]:
         """

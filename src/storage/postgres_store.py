@@ -11,12 +11,23 @@ class PostgresStore:
 
     def __init__(self, table_name: str):
         self.table_name = table_name
-        self.connection_string = os.getenv('DATABASE_URL')
-        if not self.connection_string:
+        self.connection_string = self._build_connection_string()
+
+    @staticmethod
+    def _build_connection_string() -> str:
+        url = os.getenv('DATABASE_URL')
+        if url:
+            return url
+        host = os.getenv('DB_HOST')
+        port = os.getenv('DB_PORT', '5432')
+        name = os.getenv('DB_NAME', 'shelter')
+        user = os.getenv('DB_USER')
+        password = os.getenv('DB_PASSWORD')
+        if not all([host, user, password]):
             raise ValueError(
-                "DATABASE_URL environment variable is required.\n"
-                "Add it to your .env file: DATABASE_URL=postgresql://user:password@host:port/dbname"
+                "Set DATABASE_URL or all of DB_HOST, DB_USER, DB_PASSWORD."
             )
+        return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
     def write_all(self, rows: List[Dict], vectors: List[List[float]], batch_size: int) -> None:
         """
