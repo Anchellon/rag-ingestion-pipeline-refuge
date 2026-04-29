@@ -13,4 +13,4 @@ embeddings:
 postgres:
   table_name: "service_snapshots"
   sql_file: "sql/service_snapshot.sql"
-  batch_size: 100
+  batch_size: 25

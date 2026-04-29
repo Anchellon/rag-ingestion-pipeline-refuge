@@ -1,4 +1,6 @@
 import os
+import time
+import random
 from typing import List
 
 
@@ -36,4 +38,26 @@ class Embedder:
         return self.embeddings.embed_query(text)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        return self.embeddings.embed_documents(texts)
+        if self.provider != "bedrock":
+            return self.embeddings.embed_documents(texts)
+
+        # Bedrock throttles hard under bulk load — embed one at a time with
+        # exponential backoff so we stay within the on-demand rate limit.
+        results = []
+        for text in texts:
+            attempts = 0
+            while True:
+                try:
+                    results.append(self.embeddings.embed_query(text))
+                    # Small base delay to avoid bursting
+                    time.sleep(0.05)
+                    break
+                except Exception as e:
+                    if "ThrottlingException" in str(e) or "Too many requests" in str(e):
+                        attempts += 1
+                        wait = min(2 ** attempts + random.uniform(0, 1), 60)
+                        print(f"  Bedrock throttled — retrying in {wait:.1f}s (attempt {attempts})")
+                        time.sleep(wait)
+                    else:
+                        raise
+        return results
